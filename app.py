@@ -4,10 +4,10 @@ import plotly.express as px
 
 # 1. Cấu hình giao diện Web
 st.set_page_config(page_title="Hệ Thống Phân Tích Chi Phí Kho & Vận Tải Pro", layout="wide", page_icon="📊")
-st.title("📊 HỆ THỐNG QUẢN TRỊ CHI PHÍ KHO & MA TRẬN PHÂN BỔ (STANDARD GOOGLE SHEETS)")
+st.title("📊 HỆ THỐNG QUẢN TRỊ CHI PHÍ KHO & VẬN TẢI (CHUẨN GOOGLE SHEETS)")
 st.markdown("---")
 
-# Danh sách chuẩn 25 kho / bộ phận giống hệt file Google Sheets của bạn
+# Danh sách chuẩn 25 kho / bộ phận
 STANDARD_WAREHOUSES = [
     'K0', 'K1', 'K2', 'K5', 'K6', 'K7', 'K8', 'K9', 
     'K13', 'K14', 'K15', 'K16', 'K17', 'K18', 'K19', 'K20', 
@@ -25,13 +25,24 @@ st.sidebar.header("📥 1. Upload Dữ liệu Booking")
 file_booking = st.sidebar.file_uploader("Tải lên file Booking (Excel/CSV)", type=['csv', 'xlsx'])
 
 st.sidebar.markdown("---")
-st.sidebar.header("💰 2. Nhập Chi Phí Tổng Hợp Thực Tế")
-st.sidebar.info("Nhập các khoản chi phí chính theo tháng (Trước & Sau VAT 8%).")
+st.sidebar.header("💰 2. Nhập Chi Phí Chi Tiết (Trước & Sau VAT)")
+st.sidebar.info("Nhập chính xác số liệu Trước VAT và Sau VAT (8%) khớp với Google Sheets Tháng 8.")
 
-cp_nhan_su = st.sidebar.number_input("Chi phí Nhân sự (Sau VAT):", value=87771141, step=1000000)
-cp_van_hanh = st.sidebar.number_input("Chi phí Vận hành (Sau VAT):", value=0, step=1000000)
-cp_kho_bai = st.sidebar.number_input("Chi phí Kho bãi (Sau VAT):", value=280221120, step=1000000)
-cp_van_tai = st.sidebar.number_input("Tổng Chi phí Vận tải (Sau VAT):", value=139749355, step=1000000)
+st.sidebar.subheader("1. Chi phí Nhân sự (HR)")
+ns_truoc = st.sidebar.number_input("Nhân sự - Trước VAT:", value=81269575, step=1000000)
+ns_sau = st.sidebar.number_input("Nhân sự - Sau VAT (8%):", value=87771141, step=1000000)
+
+st.sidebar.subheader("2. Chi phí Vận hành")
+vh_truoc = st.sidebar.number_input("Vận hành - Trước VAT:", value=0, step=1000000)
+vh_sau = st.sidebar.number_input("Vận hành - Sau VAT (8%):", value=0, step=1000000)
+
+st.sidebar.subheader("3. Chi phí Kho bãi")
+kb_truoc = st.sidebar.number_input("Kho bãi - Trước VAT:", value=259464000, step=1000000)
+kb_sau = st.sidebar.number_input("Kho bãi - Sau VAT (8%):", value=280221120, step=1000000)
+
+st.sidebar.subheader("4. Tổng Chi phí Vận tải")
+vt_truoc = st.sidebar.number_input("Vận tải - Trước VAT:", value=129397551, step=1000000)
+vt_sau = st.sidebar.number_input("Vận tải - Sau VAT (8%):", value=139749355, step=1000000)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Phí Bốc Xếp Phát Sinh Riêng (Theo Kho)")
@@ -43,7 +54,7 @@ boc_xep_k17 = st.sidebar.number_input("Phí bốc xếp K17:", value=1400000, st
 st.sidebar.markdown("---")
 st.sidebar.header("🔄 3. Đối Chiếu Tháng Trước")
 thang_truoc_kien = st.sidebar.number_input("Tổng kiện tháng trước:", value=15053, step=1000)
-thang_truoc_tong_chi_phi = st.sidebar.number_input("Tổng chi phí tháng trước (VNĐ):", value=507741616, step=1000000)
+thang_truoc_tong_chi_phi = st.sidebar.number_input("Tổng chi phí tháng trước (Sau VAT):", value=518543159, step=1000000)
 
 # ==================== XỬ LÝ DỮ LIỆU CHÍNH ====================
 if file_booking is not None:
@@ -82,11 +93,13 @@ if file_booking is not None:
         tong_so_chuyen = df_current[col_bien_so].nunique() if col_bien_so else 0
         tong_so_kien = df_current[col_tong_kien].sum()
         
-        # Tổng chi phí chuẩn theo Sheet
-        tong_chi_phi = cp_nhan_su + cp_van_hanh + cp_kho_bai + cp_van_tai + boc_xep_k1 + boc_xep_k6 + boc_xep_k16 + boc_xep_k17
-        cp_thung_nay = tong_chi_phi / tong_so_kien if tong_so_kien > 0 else 0
+        # Tổng chi phí Trước VAT và Sau VAT chuẩn theo Sheet
+        tong_chi_phi_truoc = ns_truoc + vh_truoc + kb_truoc + vt_truoc
+        tong_chi_phi_sau = ns_sau + vh_sau + kb_sau + vt_sau + boc_xep_k1 + boc_xep_k6 + boc_xep_k16 + boc_xep_k17
         
-        delta_chi_phi = tong_chi_phi - thang_truoc_tong_chi_phi
+        cp_thung_nay = tong_chi_phi_sau / tong_so_kien if tong_so_kien > 0 else 0
+        
+        delta_chi_phi = tong_chi_phi_sau - thang_truoc_tong_chi_phi
         delta_kien = tong_so_kien - thang_truoc_kien
         pct_chi_phi = (delta_chi_phi / thang_truoc_tong_chi_phi * 100) if thang_truoc_tong_chi_phi else 0
 
@@ -97,9 +110,8 @@ if file_booking is not None:
         for wh in STANDARD_WAREHOUSES:
             kien = agg_data.get(wh, 0.0)
             ty_trong = (kien / tong_so_kien * 100) if tong_so_kien > 0 else 0.0
-            cuoc_vt = (ty_trong / 100.0) * cp_van_tai
+            cuoc_vt = (ty_trong / 100.0) * vt_sau
             
-            # Phí bốc xếp riêng
             phu_phi = 0
             if wh == 'K1': phu_phi = boc_xep_k1
             elif wh == 'K6': phu_phi = boc_xep_k6
@@ -125,36 +137,45 @@ if file_booking is not None:
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Tổng Số Chuyến Xe", f"{tong_so_chuyen:,.0f} chuyến")
         col2.metric("Tổng Số Thùng Giao", f"{tong_so_kien:,.0f} thùng", f"{delta_kien:,.0f} thùng")
-        col3.metric("Tổng Chi Phí Thực Tế", f"{tong_chi_phi:,.0f} ₫", f"{delta_chi_phi:,.0f} ₫ ({pct_chi_phi:.1f}%)", delta_color="inverse")
+        col3.metric("Tổng Chi Phí (Sau VAT)", f"{tong_chi_phi_sau:,.0f} ₫", f"{delta_chi_phi:,.0f} ₫ ({pct_chi_phi:.1f}%)", delta_color="inverse")
         col4.metric("Bình Quân / Thùng", f"{cp_thung_nay:,.0f} ₫")
 
-        # ==================== BẢNG 1: KÊ CHI TIẾT CÁC KHOAN PHÍ (GIỐNG BẢNG BÊN TRÁI TRONG SHEET) ====================
+        # ==================== BẢNG 1: KÊ CHI TIẾT CÁC KHOAN PHÍ ====================
         st.markdown("---")
-        st.subheader("📋 2. Bảng Kê Chi Tiết Các Khoản Phí & Cước Vận Tải (Chi phí bộ phận kho)")
+        st.subheader("📋 2. Bảng Kê Chi Tiết Các Khoản Phí (Trước VAT & Sau VAT 8%)")
         
         detail_costs = [
-            {"Hạng mục Chi Phí": "Chi phí Nhân sự", "Loại Chi Phí": "Cố định", "Thành tiền (Sau VAT)": cp_nhan_su, "Đơn giá/Thùng": cp_nhan_su / tong_so_kien if tong_so_kien > 0 else 0},
-            {"Hạng mục Chi Phí": "Chi phí Vận hành", "Loại Chi Phí": "Cố định", "Thành tiền (Sau VAT)": cp_van_hanh, "Đơn giá/Thùng": cp_van_hanh / tong_so_kien if tong_so_kien > 0 else 0},
-            {"Hạng mục Chi Phí": "Chi phí Kho bãi", "Loại Chi Phí": "Cố định", "Thành tiền (Sau VAT)": cp_kho_bai, "Đơn giá/Thùng": cp_kho_bai / tong_so_kien if tong_so_kien > 0 else 0},
-            {"Hạng mục Chi Phí": "Tổng Chi phí Vận tải", "Loại Chi Phí": "Biến phí", "Thành tiền (Sau VAT)": cp_van_tai, "Đơn giá/Thùng": cp_van_tai / tong_so_kien if tong_so_kien > 0 else 0},
-            {"Hạng mục Chi Phí": "Phí bốc xếp phát sinh K1", "Loại Chi Phí": "Phát sinh", "Thành tiền (Sau VAT)": boc_xep_k1, "Đơn giá/Thùng": boc_xep_k1 / tong_so_kien if tong_so_kien > 0 else 0},
-            {"Hạng mục Chi Phí": "Phí bốc xếp phát sinh K6", "Loại Chi Phí": "Phát sinh", "Thành tiền (Sau VAT)": boc_xep_k6, "Đơn giá/Thùng": boc_xep_k6 / tong_so_kien if tong_so_kien > 0 else 0},
-            {"Hạng mục Chi Phí": "Phí bốc xếp phát sinh K16", "Loại Chi Phí": "Phát sinh", "Thành tiền (Sau VAT)": boc_xep_k16, "Đơn giá/Thùng": boc_xep_k16 / tong_so_kien if tong_so_kien > 0 else 0},
-            {"Hạng mục Chi Phí": "Phí bốc xếp phát sinh K17", "Loại Chi Phí": "Phát sinh", "Thành tiền (Sau VAT)": boc_xep_k17, "Đơn giá/Thùng": boc_xep_k17 / tong_so_kien if tong_so_kien > 0 else 0},
+            {"Hạng mục Chi Phí": "Chi phí Nhân sự", "Trước VAT (VNĐ)": ns_truoc, "Thanh toán (Gồm 8% VAT)": ns_sau, "Đơn giá/Thùng": ns_sau / tong_so_kien if tong_so_kien > 0 else 0},
+            {"Hạng mục Chi Phí": "Chi phí Vận hành", "Trước VAT (VNĐ)": vh_truoc, "Thanh toán (Gồm 8% VAT)": vh_sau, "Đơn giá/Thùng": vh_sau / tong_so_kien if tong_so_kien > 0 else 0},
+            {"Hạng mục Chi Phí": "Chi phí Kho bãi", "Trước VAT (VNĐ)": kb_truoc, "Thanh toán (Gồm 8% VAT)": kb_sau, "Đơn giá/Thùng": kb_sau / tong_so_kien if tong_so_kien > 0 else 0},
+            {"Hạng mục Chi Phí": "Tổng Chi phí Vận tải", "Trước VAT (VNĐ)": vt_truoc, "Thanh toán (Gồm 8% VAT)": vt_sau, "Đơn giá/Thùng": vt_sau / tong_so_kien if tong_so_kien > 0 else 0},
+            {"Hạng mục Chi Phí": "Phí bốc xếp phát sinh K1", "Trước VAT (VNĐ)": boc_xep_k1, "Thanh toán (Gồm 8% VAT)": boc_xep_k1, "Đơn giá/Thùng": boc_xep_k1 / tong_so_kien if tong_so_kien > 0 else 0},
+            {"Hạng mục Chi Phí": "Phí bốc xếp phát sinh K6", "Trước VAT (VNĐ)": boc_xep_k6, "Thanh toán (Gồm 8% VAT)": boc_xep_k6, "Đơn giá/Thùng": boc_xep_k6 / tong_so_kien if tong_so_kien > 0 else 0},
+            {"Hạng mục Chi Phí": "Phí bốc xếp phát sinh K16", "Trước VAT (VNĐ)": boc_xep_k16, "Thanh toán (Gồm 8% VAT)": boc_xep_k16, "Đơn giá/Thùng": boc_xep_k16 / tong_so_kien if tong_so_kien > 0 else 0},
+            {"Hạng mục Chi Phí": "Phí bốc xếp phát sinh K17", "Trước VAT (VNĐ)": boc_xep_k17, "Thanh toán (Gồm 8% VAT)": boc_xep_k17, "Đơn giá/Thùng": boc_xep_k17 / tong_so_kien if tong_so_kien > 0 else 0},
         ]
         df_detail = pd.DataFrame(detail_costs)
+        
+        # Thêm dòng Tổng cộng
+        total_row = pd.DataFrame([{
+            "Hạng mục Chi Phí": "TỔNG CỘNG", 
+            "Trước VAT (VNĐ)": tong_chi_phi_truoc, 
+            "Thanh toán (Gồm 8% VAT)": tong_chi_phi_sau, 
+            "Đơn giá/Thùng": cp_thung_nay
+        }])
+        df_detail = pd.concat([df_detail, total_row], ignore_index=True)
+
         st.dataframe(df_detail.style.format({
-            'Thành tiền (Sau VAT)': '{:,.0f} ₫',
+            'Trước VAT (VNĐ)': '{:,.0f} ₫',
+            'Thanh toán (Gồm 8% VAT)': '{:,.0f} ₫',
             'Đơn giá/Thùng': '{:,.0f} ₫'
         }), use_container_width=True)
 
-        # ==================== BẢNG 2: MA TRẬN TỔNG HỢP THEO KHO (GIỐNG BẢNG BÊN PHẢI TRONG SHEET) ====================
+        # ==================== BẢNG 2: MA TRẬN TỔNG HỢP THEO KHO ====================
         st.markdown("---")
-        st.subheader("🗂️ 3. Ma Trận Tổng Hợp Sản Lượng & Đơn Giá Từng Thùng Theo Kho (Standard Matrix)")
+        st.subheader("🗂️ 3. Ma Trận Tổng Hợp Sản Lượng & Đơn Giá Từng Thùng Theo Kho")
         
-        # Chuyển đổi format ngang giống bảng Google Sheets bên phải của bạn để dễ quan sát
         df_pivot = df_matrix.set_index('Kho / Bộ phận')[['Số Kiện', 'Tỷ trọng (%)', 'Cước vận tải (VNĐ)', 'Chi phí từng thùng (VNĐ)']].T
-        
         st.dataframe(df_pivot.style.format("{:,.2f}"), use_container_width=True)
 
         # Biểu đồ trực quan
@@ -168,4 +189,4 @@ if file_booking is not None:
     except Exception as e:
         st.error(f"Đã xảy ra lỗi khi xử lý dữ liệu: {e}")
 else:
-    st.info("👈 Vui lòng tải file Booking của bạn lên từ thanh công cụ bên trái để hệ thống hiển thị đầy đủ 2 bảng báo cáo.")
+    st.info("👈 Vui lòng tải file Booking của bạn lên từ thanh công cụ bên trái để hệ thống hiển thị đầy đủ bảng báo cáo.")
